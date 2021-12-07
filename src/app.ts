@@ -34,9 +34,7 @@ function getSignature(parameters: object, secret: string) {
 }
 
 const getOrderBook = async (symbol: string, side: "Buy" | "Sell") => {
-    const params = {
-        symbol
-    };
+    const params = { symbol };
     const sign = getSignature(params, secret);
     const { data } = await axios.get(`${apiUrl}${orderBook}`, { params: { ...params, sign } });
     // console.log(data);
@@ -46,7 +44,7 @@ const getOrderBook = async (symbol: string, side: "Buy" | "Sell") => {
 
 (async () => {
     while (true) {
-        await Promise.all([getOrderBook("BITUSDT", "Buy"), timeout(1500)]);
+        await Promise.all([getOrderBook("BITUSDT", "Buy"), timeout(1250)]);
     }
 })().catch((err) => {
     console.error(err);
