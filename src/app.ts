@@ -14,7 +14,7 @@ const timestamp = Date.now();
 // };
 
 const apiUrl = "https://api.bybit.com";
-const orderBook = "/v2/public/orderBook/L2";
+const orderBook = "/spot/quote/v1/depth";
 
 function timeout(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -34,17 +34,27 @@ function getSignature(parameters: object, secret: string) {
 }
 
 const getOrderBook = async (symbol: string, side: "Buy" | "Sell") => {
-    const params = { symbol };
+    const params = { symbol, limit: 1 };
     const sign = getSignature(params, secret);
     const { data } = await axios.get(`${apiUrl}${orderBook}`, { params: { ...params, sign } });
-    // console.log(data);
-    const buyData = data.result.filter((order: any) => order.side === "Buy");
-    console.dir(buyData);
+    console.log(data);
+    // const buyData = data.result.filter((order: any) => order.side === "Buy");
+    // console.dir(data.result.bids);
+    // console.dir(data.result.asks);
+    if (data.result.asks.length > 0) {
+        console.log(`haveData`);
+        return true;
+    }
+    console.log(`donthaveData`);
+
+    return false;
 };
 
 (async () => {
-    while (true) {
-        await Promise.all([getOrderBook("BITUSDT", "Buy"), timeout(1250)]);
+    let finish = false;
+    while (!finish) {
+        const [haveOrder] = await Promise.all([getOrderBook("SISSUSDT", "Buy"), timeout(750)]);
+        finish = haveOrder;
     }
 })().catch((err) => {
     console.error(err);
