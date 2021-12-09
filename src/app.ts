@@ -34,7 +34,7 @@ const getBalance = async () => {
     const { data: balance } = await axios.get(`${apiUrl}${orderBalance}`, {
         params: { ...params, sign: getSignature(params, secret) }
     });
-    // console.dir(balance.result.balances);
+    console.dir(balance.result.balances);
     return balance.result.balances.find((symbol: any) => symbol.coin === "USDT").free;
 };
 
@@ -50,14 +50,19 @@ const placeOrder = async (
     { qty, freeUSDT }: { qty?: number; freeUSDT?: number }
 ) => {
     const floatPrice = parseFloat(price);
-    const finalPrice = side === "Buy" ? floatPrice * 1.05 : floatPrice;
-    console.dir(`finalPrice: ${finalPrice}`);
+    const finalPrice =
+        side === "Buy"
+            ? Math.floor(floatPrice * 1.01 * 100) / 100
+            : Math.floor(floatPrice * 100) / 100;
     const timestamp = await getServerTime();
     const finalQty = qty
-        ? qty.toFixed(2)
+        ? Math.floor(qty * 100) / 100
         : freeUSDT
         ? Math.floor((freeUSDT / finalPrice) * 100) / 100
         : 0;
+    console.dir(`freeUSDT: ${freeUSDT}`);
+    console.dir(`finalPrice: ${finalPrice}`);
+    if (freeUSDT) console.dir(`qty: ${freeUSDT / finalPrice}`);
     console.dir(`finalQty: ${finalQty}`);
     const params = {
         timestamp,
@@ -67,7 +72,7 @@ const placeOrder = async (
         type: "LIMIT",
         qty: finalQty,
         timeInForce: "IOC",
-        price: finalPrice.toFixed(2)
+        price: finalPrice
     };
     const sign = getSignature(params, secret);
     const config = {
