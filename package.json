@@ -4,12 +4,13 @@
     "main": "index.js",
     "license": "MIT",
     "scripts": {
-        "start": "NODE_ENV='development' ts-node-dev --respawn --transpile-only ./src/app.ts",
+        "start": "ts-node-dev --respawn --transpile-only ./src/app.ts",
         "build": "tsc -p .",
         "prod": "NODE_ENV='production' PORT='8082' node server.js"
     },
     "devDependencies": {
         "@types/node": "^16.10.5",
+        "@types/qs": "^6.9.7",
         "@typescript-eslint/eslint-plugin": "^5.0.0",
         "@typescript-eslint/parser": "^5.0.0",
         "eslint": "^8.0.0",
@@ -26,6 +27,7 @@
     "dependencies": {
         "axios": "^0.24.0",
         "crypto": "^1.0.1",
-        "dotenv": "^10.0.0"
+        "dotenv": "^10.0.0",
+        "qs": "^6.10.2"
     }
 }
