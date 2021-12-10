@@ -34,7 +34,7 @@ const getBalance = async () => {
     const { data: balance } = await axios.get(`${apiUrl}${orderBalance}`, {
         params: { ...params, sign: getSignature(params, secret) }
     });
-    console.dir(balance.result.balances);
+    // console.dir(balance.result.balances);
     return balance.result.balances.find((symbol: any) => symbol.coin === "USDT").free;
 };
 
@@ -52,7 +52,7 @@ const placeOrder = async (
     const floatPrice = parseFloat(price);
     const finalPrice =
         side === "Buy"
-            ? Math.floor(floatPrice * 1.01 * 100) / 100
+            ? Math.floor(floatPrice * 2 * 100) / 100
             : Math.floor(floatPrice * 100) / 100;
     const timestamp = await getServerTime();
     const finalQty = qty
@@ -86,6 +86,7 @@ const placeOrder = async (
         config
     );
     console.dir(order);
+    return order.ret_code;
 };
 
 const getOrderBook = async (
@@ -93,22 +94,28 @@ const getOrderBook = async (
     side: "Buy" | "Sell",
     options: { qty?: number; freeUSDT?: number }
 ) => {
-    const orderBookparams = { symbol, limit: "1" };
+    const orderBookparams = { symbol, limit: "100" };
     try {
         const { data } = await axios.get(`${apiUrl}${orderBook}`, {
             params: { ...orderBookparams }
         });
-        // console.dir(data);
+        // console.dir(data.result.asks);
         if (data.result.asks.length > 0) {
             console.dir(
                 `Ask Price: ${data.result.asks[0][0]} Bid Price: ${data.result.bids[0][0]}`
             );
             const price = side === "Buy" ? data.result.asks[0][0] : data.result.bids[0][0];
 
-            await placeOrder(price, symbol, side, options);
+            const return_code = await placeOrder(price, symbol, side, options);
+            // console.log(return_code);
             const latestBalance = parseFloat(await getBalance());
             console.dir(`Free USDT: ${latestBalance}`);
-
+            if (latestBalance > 20) {
+                return false;
+            }
+            if (return_code === -1151 || latestBalance > 50) {
+                return false;
+            }
             return true;
         }
         console.log(`no ${symbol} order book yet`);
@@ -126,8 +133,8 @@ const getOrderBook = async (
 
     while (!finish) {
         const [haveOrder] = await Promise.all([
-            getOrderBook("BITUSDT", "Buy", { freeUSDT }),
-            timeout(2250)
+            getOrderBook("DEVTUSDT", "Buy", { freeUSDT }),
+            timeout(250)
         ]);
         finish = haveOrder;
     }
