@@ -5,8 +5,7 @@
     "license": "MIT",
     "scripts": {
         "start": "ts-node-dev --respawn --transpile-only ./src/app.ts",
-        "build": "tsc -p .",
-        "prod": "NODE_ENV='production' PORT='8082' node server.js"
+        "build": "tsc -p ."
     },
     "devDependencies": {
         "@types/node": "^16.10.5",

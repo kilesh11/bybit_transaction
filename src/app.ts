@@ -52,7 +52,7 @@ const placeOrder = async (
     const floatPrice = parseFloat(price);
     const finalPrice =
         side === "Buy"
-            ? Math.floor(floatPrice * 2 * 100) / 100
+            ? Math.floor(floatPrice * 1.5 * 100) / 100
             : Math.floor(floatPrice * 100) / 100;
     const timestamp = await getServerTime();
     const finalQty = qty
@@ -94,12 +94,12 @@ const getOrderBook = async (
     side: "Buy" | "Sell",
     options: { qty?: number; freeUSDT?: number }
 ) => {
-    const orderBookparams = { symbol, limit: "100" };
+    const orderBookparams = { symbol, limit: "1" };
     try {
         const { data } = await axios.get(`${apiUrl}${orderBook}`, {
             params: { ...orderBookparams }
         });
-        // console.dir(data.result.asks);
+        // console.dir(data.result);
         if (data.result.asks.length > 0) {
             console.dir(
                 `Ask Price: ${data.result.asks[0][0]} Bid Price: ${data.result.bids[0][0]}`
@@ -111,32 +111,33 @@ const getOrderBook = async (
             const latestBalance = parseFloat(await getBalance());
             console.dir(`Free USDT: ${latestBalance}`);
             if (latestBalance > 20) {
-                return false;
+                return { haveOrder: false, latestBalance };
             }
-            if (return_code === -1151 || latestBalance > 50) {
-                return false;
+            if (return_code === -1151) {
+                return { haveOrder: false, latestBalance };
             }
-            return true;
+            return { haveOrder: true, latestBalance };
         }
+
         console.log(`no ${symbol} order book yet`);
-        return false;
+        return { haveOrder: false, latestBalance: options.freeUSDT };
     } catch (err) {
         console.log(`Error in getting order Book`);
-        return false;
+        return { haveOrder: false, latestBalance: undefined };
     }
 };
 
 (async () => {
     let finish = false;
-    const freeUSDT = parseFloat(await getBalance());
+    let freeUSDT = parseFloat(await getBalance());
     console.dir(`Free USDT: ${freeUSDT}`);
-
     while (!finish) {
-        const [haveOrder] = await Promise.all([
-            getOrderBook("DEVTUSDT", "Buy", { freeUSDT }),
-            timeout(250)
+        const [{ haveOrder, latestBalance }] = await Promise.all([
+            getOrderBook("REALUSDT", "Buy", { freeUSDT }),
+            timeout(200)
         ]);
         finish = haveOrder;
+        if (latestBalance) freeUSDT = latestBalance;
     }
 })().catch((err) => {
     console.error(err);
