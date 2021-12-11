@@ -65,14 +65,13 @@ const placeOrder = async (
     if (freeUSDT) console.dir(`qty: ${freeUSDT / finalPrice}`);
     console.dir(`finalQty: ${finalQty}`);
     const params = {
-        timestamp,
-        api_key,
-        side,
-        symbol,
-        type: "LIMIT",
-        qty: finalQty,
-        timeInForce: "IOC",
-        price: finalPrice
+        "account-id": "100009",
+        amount: "10.1",
+        price: "100.1",
+        source: "api",
+        symbol: "ethusdt",
+        type: "buy-limit",
+        "client-order-id": "a0001"
     };
     const sign = getSignature(params, secret);
     const config = {
@@ -89,41 +88,50 @@ const placeOrder = async (
     return order.ret_code;
 };
 
-const getOrderBook = async (
+const getOrderBook = async (symbol: string) => {
+    try {
+        const orderBookparams = { symbol, limit: "1" };
+        const { data } = await axios.get(`${apiUrl}${orderBook}`, {
+            params: { ...orderBookparams }
+        });
+        return data.result;
+    } catch (err) {
+        console.log(`Error in getting order Book`);
+        return undefined;
+    }
+};
+
+const loopFunction = async (
     symbol: string,
     side: "Buy" | "Sell",
     options: { qty?: number; freeUSDT?: number }
 ) => {
-    const orderBookparams = { symbol, limit: "1" };
     try {
-        const { data } = await axios.get(`${apiUrl}${orderBook}`, {
-            params: { ...orderBookparams }
-        });
-        // console.dir(data.result);
-        if (data.result.asks.length > 0) {
-            console.dir(
-                `Ask Price: ${data.result.asks[0][0]} Bid Price: ${data.result.bids[0][0]}`
-            );
-            const price = side === "Buy" ? data.result.asks[0][0] : data.result.bids[0][0];
+        const orderBook = await getOrderBook(symbol);
+        if (orderBook) {
+            if (orderBook.asks.length > 0 || orderBook.bids.length > 0) {
+                console.dir(`Ask Price: ${orderBook.asks[0][0]}`);
+                const price = side === "Buy" ? orderBook.asks[0][0] : orderBook.bids[0][0];
 
-            const return_code = await placeOrder(price, symbol, side, options);
-            // console.log(return_code);
-            const latestBalance = parseFloat(await getBalance());
-            console.dir(`Free USDT: ${latestBalance}`);
-            if (latestBalance > 20) {
-                return { haveOrder: false, latestBalance };
+                // const return_code = await placeOrder(price, symbol, side, options);
+                const latestBalance = parseFloat(await getBalance());
+                console.dir(`Free USDT: ${latestBalance}`);
+                if (latestBalance > 20) {
+                    return { boughtAll: false, latestBalance };
+                }
+                // if (return_code === -1151) {
+                //     // pair not opened
+                //     return { boughtAll: false, latestBalance };
+                // }
+                return { boughtAll: true, latestBalance };
             }
-            if (return_code === -1151) {
-                return { haveOrder: false, latestBalance };
-            }
-            return { haveOrder: true, latestBalance };
+            console.log(`no ${symbol} order book yet`);
+            return { boughtAll: false, latestBalance: options.freeUSDT };
         }
-
-        console.log(`no ${symbol} order book yet`);
-        return { haveOrder: false, latestBalance: options.freeUSDT };
+        return { boughtAll: false, latestBalance: undefined };
     } catch (err) {
-        console.log(`Error in getting order Book`);
-        return { haveOrder: false, latestBalance: undefined };
+        console.log(`Error in Loop Function: ${err}`);
+        return { boughtAll: false, latestBalance: undefined };
     }
 };
 
@@ -132,13 +140,14 @@ const getOrderBook = async (
     let freeUSDT = parseFloat(await getBalance());
     console.dir(`Free USDT: ${freeUSDT}`);
     while (!finish) {
-        const [{ haveOrder, latestBalance }] = await Promise.all([
-            getOrderBook("REALUSDT", "Buy", { freeUSDT }),
-            timeout(200)
+        const [{ boughtAll, latestBalance }] = await Promise.all([
+            loopFunction("REALUSDT", "Buy", { freeUSDT }),
+            timeout(2200)
         ]);
-        finish = haveOrder;
+        finish = boughtAll;
         if (latestBalance) freeUSDT = latestBalance;
     }
+    console.dir(`Process Completed!`);
 })().catch((err) => {
     console.error(err);
 });
