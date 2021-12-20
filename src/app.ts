@@ -52,7 +52,7 @@ const placeOrder = async (
     // const floatPrice = parseFloat(price);
     const finalPrice =
         side === "Buy"
-            ? Math.floor(floatPrice * 1.5 * 100) / 100
+            ? Math.floor(floatPrice * 1.1 * 100) / 100
             : Math.floor(floatPrice * 100) / 100;
     const timestamp = await getServerTime();
     const finalQty = qty
@@ -65,13 +65,14 @@ const placeOrder = async (
     if (freeUSDT) console.dir(`qty: ${freeUSDT / finalPrice}`);
     console.dir(`finalQty: ${finalQty}`);
     const params = {
-        "account-id": "100009",
-        amount: "10.1",
-        price: "100.1",
-        source: "api",
-        symbol: "ethusdt",
-        type: "buy-limit",
-        "client-order-id": "a0001"
+        timestamp,
+        api_key,
+        side,
+        symbol,
+        type: "LIMIT",
+        qty: finalQty,
+        timeInForce: "IOC",
+        price: finalPrice
     };
     const sign = getSignature(params, secret);
     const config = {
