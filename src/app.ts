@@ -13,6 +13,7 @@ const orderBook = "/spot/quote/v1/depth";
 const orderBalance = "/spot/v1/account";
 const placeOrderUrl = "/spot/v1/order";
 const serverTimeUrl = "/spot/v1/time";
+const lastTradeUrl = "/spot/quote/v1/ticker/price";
 
 const timeout = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -80,25 +81,30 @@ const placeOrder = async (
             "Content-Type": "application/x-www-form-urlencoded"
         }
     };
-    const { data: order } = await axios.post(
-        `${apiUrl}${placeOrderUrl}`,
-        qs.stringify({ ...params, sign }),
-        config
-    );
-    console.dir(order);
-    return order.ret_code;
+    // const { data: order } = await axios.post(
+    //     `${apiUrl}${placeOrderUrl}`,
+    //     qs.stringify({ ...params, sign }),
+    //     config
+    // );
+    // console.dir(order);
+    // return order.ret_code;
+    return -1151;
 };
 
 const getOrderBook = async (symbol: string) => {
     try {
-        const orderBookparams = { symbol, limit: "1" };
-        const { data } = await axios.get(`${apiUrl}${orderBook}`, {
+        const orderBookparams = { symbol };
+        const { data } = await axios.get(`${apiUrl}${lastTradeUrl}`, {
             params: { ...orderBookparams }
         });
         console.dir(data.result);
-        return data.result;
+        const price = parseFloat(data.result.price);
+        if (price !== 0) {
+            return price;
+        }
+        throw new Error(`Error in getting Last Trade Price`);
     } catch (err) {
-        console.log(`Error in getting order Book`);
+        console.log(`Error in getting Last Trade Price`);
         return undefined;
     }
 };
@@ -109,17 +115,17 @@ const loopFunction = async (
     options: { qty?: number; freeUSDT?: number; maxPrice?: number }
 ) => {
     try {
-        const orderBook = await getOrderBook(symbol);
-        if (orderBook) {
-            if (orderBook.asks.length > 0 || orderBook.bids.length > 0) {
-                console.dir(`Ask Price: ${orderBook.asks[0][0]}`);
-                const price = side === "Buy" ? orderBook.asks[0][0] : orderBook.bids[0][0];
-                const floatPrice = parseFloat(price);
-                if (options.maxPrice && floatPrice > options.maxPrice) {
+        const lastTradePrice = await getOrderBook(symbol);
+        if (lastTradePrice) {
+            if (lastTradePrice > 0) {
+                console.dir(`Ask Price: ${lastTradePrice}`);
+                // const price = side === "Buy" ? orderBook.asks[0][0] : orderBook.bids[0][0];
+                // const floatPrice = parseFloat(price);
+                if (options.maxPrice && lastTradePrice > options.maxPrice) {
                     console.log(`Ask Price higher than Max Price`);
                     return { boughtAll: false, latestBalance: undefined };
                 }
-                const return_code = await placeOrder(floatPrice, symbol, side, options);
+                const return_code = await placeOrder(lastTradePrice, symbol, side, options);
                 const latestBalance = parseFloat(await getBalance());
                 console.dir(`Free USDT: ${latestBalance}`);
                 if (latestBalance > 20) {
@@ -147,7 +153,7 @@ const loopFunction = async (
     console.dir(`Free USDT: ${freeUSDT}`);
     while (!finish) {
         const [{ boughtAll, latestBalance }] = await Promise.all([
-            loopFunction("IZIUSDT", "Buy", { freeUSDT, maxPrice: 2 }),
+            loopFunction("IZIUSDT", "Buy", { freeUSDT, maxPrice: 20 }),
             timeout(2200)
         ]);
         finish = boughtAll;
